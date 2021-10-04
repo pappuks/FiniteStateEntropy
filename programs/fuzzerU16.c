@@ -30,6 +30,11 @@
 ******************************/
 #define _CRT_SECURE_NO_WARNINGS   /* remove Visual warning */
 
+#ifdef FSEU16_MAX_SYMBOL_VALUE
+# undef FSEU16_MAX_SYMBOL_VALUE
+#endif
+#define FSEU16_MAX_SYMBOL_VALUE 2048
+
 
 /******************************
 *  Include
@@ -282,12 +287,49 @@ static void unitTest(void)
     DISPLAY("Unit tests completed\n");
 }
 
+static void testDCMCompress(void) {
+    FILE* const inFile = fopen( "image_bin.bin", "rb" );
+    char* orig_buff = (char*)malloc((size_t )4904172);
+    size_t readSize = fread(orig_buff, 1, 4904172, inFile);
+    if (readSize != 4904172) {
+        DISPLAY("\nError: problem reading file '%s' (%i read, should be %i) !!    \n",
+                "image_bin.bin", (int)readSize, (int)4904172);
+        free(orig_buff);
+        return;
+    }
+    U16* dstBuff = (U16*)malloc((size_t )4904172);
+    size_t compressedSize = FSE_compressU16(dstBuff, 4904172,  (const unsigned short*)orig_buff, 4904172 / 2, 893, 0);
+    DISPLAY("\n Original %d : Compressed %d , ratio %.2f\n", 4904172, compressedSize, (double)4904172/compressedSize);
+    if (FSE_isError(compressedSize)) {
+        DISPLAY("Error: %s\n",FSE_getErrorName(compressedSize));
+    }
+
+    U16* origBuff = (U16*)malloc((size_t )4904172);
+
+    size_t dSize = FSE_decompressU16(orig_buff, 4904172 / 2, dstBuff, compressedSize);
+    if (FSE_isError(dSize)) {
+                        DISPLAY("\r FSE_decompressU16 failed : %s ! (origSize = %u shorts, cSize = %u bytes)\n",
+                        FSE_getErrorName(dSize), (U32)4904172 / 2, (U32)compressedSize);
+    }
+    U64 const hashEnd = XXH64 (orig_buff, dSize * sizeof(U16), 0);
+    U64 const hashOrig = XXH64 (orig_buff, 4904172, 0);
+    if(hashEnd != hashOrig) {
+        DISPLAY("\r Decompressed data corrupted !!");
+    } else {
+        DISPLAY("Successful 16bit decompression\n");
+    }
+    
+    DISPLAY("Max symbol: %d\n", FSEU16_MAX_SYMBOL_VALUE);
+
+}
+
 
 /*****************************************************************
 *  Command line
 *****************************************************************/
 int main (int argc, const char** argv)
 {
+    testDCMCompress();
     U32 startTestNb=0, pause=0, totalTest = FUZ_NB_TESTS;
     int argNb;
 

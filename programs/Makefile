@@ -138,6 +138,9 @@ test: test-fse fullbench fuzzer fuzzerU16 fuzzerHuff0
 	./fuzzerU16 $(FSEU16TEST)
 	./fuzzerHuff0 $(FSETEST)
 
+testFuzzU16: fuzzerU16
+	./fuzzerU16 $(FSEU16TEST)
+
 test-fse32: probagen fse32
 	./probagen 20%
 	@echo compress using FSE
